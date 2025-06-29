@@ -1,0 +1,9 @@
+{
+  "name": "container-watcher",
+  "version": "1.0.0",
+  "description": "Kontroluje kontenery, restartuje je i wysyła alarm przez MQTT",
+  "dependencies": {
+    "mqtt": "^5.4.0",
+    "dockerode": "^3.3.4"
+  }
+}

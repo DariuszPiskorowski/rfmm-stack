@@ -1,0 +1,34 @@
+INSTRUKCJA URUCHOMIENIA RFMM SWARM (dla laika):
+
+KROK 0: Sprawdź, czy masz zainstalowane:
+- Tailscale (host, nie w Dockerze!)
+- Docker + Docker Compose/SWARM
+- Na hostcie możesz mieć środowisko graficzne + Chromium jeśli wyświetlasz UI na ekranie.
+
+KROK 1: Sklonuj repo lub pobierz paczkę. Wejdź do katalogu głównego projektu.
+
+KROK 2: Skonfiguruj plik .env (przykład dołączony). 
+Uzupełnij secrets/mqtt_password.txt i secrets/pg_password.txt.
+
+KROK 3: Zbuduj i wypchnij obrazy (patrz .github/workflows/deploy.yml) lub pobierz gotowe z registry.
+
+KROK 4: Deploy stacka na managerze Swarm:
+    docker stack deploy -c docker-stack.yml rfmm
+
+KROK 5: Sprawdź status:
+    docker service ls
+
+KROK 6: Adminer (baza): 
+    http://adres-tailscale:8080 (logowanie: iotadmin + hasło z secrets/pg_password.txt)
+
+KROK 7: Aby uruchomić "Lock UI":
+    docker service scale rfmm_lockui=1
+
+KROK 8: Watcher sam monitoruje kontenery i alarmuje do Twojego brokera MQTT (topic office/alerts).
+Alarmy mogą być przekierowane do Telegrama przez n8n.
+
+KROK 9: Aktualizacje kodu:
+    - Nowa wersja obrazu logger/watcher/lock-ui -> docker push do registry
+    - Na managerze: docker service update --image strainex/logger:latest rfmm_logger (lub full stack deploy)
+
+Masz pytania? Skontaktuj się z adminem lub sprawdź README.txt.

@@ -1,0 +1,88 @@
+version: '3.8'
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_USER: iotadmin
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+      POSTGRES_DB: iot
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [backend]
+    secrets:
+      - pg_password
+
+  adminer:
+    image: adminer
+    ports:
+      - "8090:8080"
+    networks: [backend]
+
+  mainapp:
+    image: 100.119.56.20:5000/rfmm:dev-2025-06-25-03-53   # tylko ten obraz aktualizujesz i zmieniasz tag!
+    environment:
+      PGUSER: iotadmin
+      PGPASSWORD: ${PGPASSWORD}
+      PGHOST: db
+      PGDATABASE: iot
+      PGPORT: 5432
+      MQTT_URL: mqtt://100.125.164.67:1967
+      MQTT_USER: Sandoval
+      MQTT_PASSWORD: ${MQTTPASSWORD}
+    depends_on: [db]
+    ports:
+      - "8080:8080"
+    networks: [backend]
+    secrets:
+      - pg_password
+      - mqtt_password
+
+  logger:
+    image: 100.119.56.20:5000/rfmm-logger:latest   # bez daty!
+    environment:
+      PGUSER: iotadmin
+      PGPASSWORD: ${PGPASSWORD}
+      PGHOST: db
+      PGDATABASE: iot
+      PGPORT: 5432
+      MQTT_URL: mqtt://100.125.164.67:1967
+      MQTT_USER: Sandoval
+      MQTT_PASSWORD: ${MQTTPASSWORD}
+    depends_on: [db]
+    networks: [backend]
+    secrets:
+      - pg_password
+      - mqtt_password
+
+  watcher:
+    image: 100.119.56.20:5000/rfmm-watcher:latest
+    environment:
+      MQTT_URL: mqtt://100.125.164.67:1967
+      MQTT_USER: Sandoval
+      MQTT_PASSWORD: ${MQTTPASSWORD}
+      WATCHED_CONTAINERS: mainapp,logger,db
+    depends_on: [mainapp, logger, db]
+    networks: [backend]
+    secrets:
+      - mqtt_password
+
+  lockui:
+    image: 100.119.56.20:5000/rfmm-lockui:latest
+    deploy:
+      replicas: 0
+    ports:
+      - "8080:80"
+    networks: [backend]
+
+volumes:
+  pgdata:
+
+networks:
+  backend:
+    driver: overlay
+
+secrets:
+  pg_password:
+    file: secrets/pg_password.txt
+  mqtt_password:
+    file: secrets/mqtt_password.txt

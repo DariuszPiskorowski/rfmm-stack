@@ -30,9 +30,21 @@ jobs:
             lockui:
               - 'lock-ui/**'
 
+  tailscale:
+    name: Tailscale network join
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    steps:
+      - name: Install tailscale
+        run: |
+          curl -fsSL https://tailscale.com/install.sh | sh
+      - name: Start tailscale (with authkey)
+        run: |
+          sudo tailscale up --authkey ${{ secrets.TS_AUTHKEY }} --ssh --accept-routes --reset
+
   build-logger:
     name: Build & Push Logger
-    needs: detect-changes
+    needs: [detect-changes, tailscale]
     if: needs.detect-changes.outputs.logger == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -54,7 +66,7 @@ jobs:
 
   build-watcher:
     name: Build & Push Watcher
-    needs: detect-changes
+    needs: [detect-changes, tailscale]
     if: needs.detect-changes.outputs.watcher == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -76,7 +88,7 @@ jobs:
 
   build-lockui:
     name: Build & Push Lock UI
-    needs: detect-changes
+    needs: [detect-changes, tailscale]
     if: needs.detect-changes.outputs.lockui == 'true'
     runs-on: ubuntu-latest
     steps:

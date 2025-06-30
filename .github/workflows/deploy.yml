@@ -17,58 +17,60 @@ on:
         default: 'false'
 
 jobs:
-  detect-changes:
+  tailscale-online:
+    name: Ensure Tailscale & Registry available
     runs-on: ubuntu-latest
     outputs:
-      logger: ${{ steps.filter.outputs.logger }}
-      watcher: ${{ steps.filter.outputs.watcher }}
-      lockui: ${{ steps.filter.outputs.lockui }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            logger:
-              - 'mqtt-logger/**'
-            watcher:
-              - 'watcher/**'
-            lockui:
-              - 'lock-ui/**'
-
-  tailscale:
-    name: Tailscale network join
-    runs-on: ubuntu-latest
-    needs: detect-changes
+      registry_reachable: ${{ steps.wait.outputs.registry_reachable }}
     steps:
       - name: Install tailscale
         run: curl -fsSL https://tailscale.com/install.sh | sh
+
       - name: Start tailscale (with authkey)
-        run: sudo tailscale up --authkey ${{ secrets.TS_AUTHKEY }} --ssh --accept-routes --reset
-      - name: Show Tailscale status
-        run: sudo tailscale status
+        run: |
+          sudo tailscale up --authkey ${{ secrets.TS_AUTHKEY }} --ssh --accept-routes --reset
+
+      - name: Wait for Tailscale IP
+        run: |
+          echo "Czekam na aktywację Tailscale..."
+          for i in {1..30}; do
+            if tailscale ip -4 | grep -qE '^[0-9]+\.'; then
+              echo "Tailscale aktywne!"; break
+            else
+              echo "Czekam... $i/30"
+              sleep 3
+            fi
+          done
+
       - name: Wait for registry
+        id: wait
         env:
           REGISTRY: ${{ secrets.REGISTRY }}
         run: |
-          echo "Testing TCP connectivity to registry $REGISTRY..."
-          for i in {1..10}; do
+          echo "Testuje dostępność registry $REGISTRY przez 2 minuty..."
+          for i in {1..24}; do
             if curl -s http://$REGISTRY/v2/; then
-              echo "Registry $REGISTRY is reachable!"; exit 0;
+              echo "::set-output name=registry_reachable::true"
+              exit 0
             else
-              echo "Attempt $i: Registry $REGISTRY not reachable yet. Waiting...";
-              sleep 5;
+              echo "[$i/24] Registry $REGISTRY nieosiągalne. Czekam..."
+              sleep 5
             fi
           done
-          echo "ERROR: Registry $REGISTRY is not reachable after waiting."; exit 1
+          echo "::set-output name=registry_reachable::false"
+          exit 1
 
   build-logger:
     name: Build & Push Logger
-    needs: [detect-changes, tailscale]
-    if: needs.detect-changes.outputs.logger == 'true' || github.event.inputs.force_build == 'true'
     runs-on: ubuntu-latest
+    needs: tailscale-online
+    if: needs.tailscale-online.outputs.registry_reachable == 'true'
     steps:
       - uses: actions/checkout@v4
+      - name: Install tailscale
+        run: curl -fsSL https://tailscale.com/install.sh | sh
+      - name: Start tailscale
+        run: sudo tailscale up --authkey ${{ secrets.TS_AUTHKEY }} --ssh --accept-routes --reset
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Registry
@@ -86,11 +88,15 @@ jobs:
 
   build-watcher:
     name: Build & Push Watcher
-    needs: [detect-changes, tailscale]
-    if: needs.detect-changes.outputs.watcher == 'true' || github.event.inputs.force_build == 'true'
     runs-on: ubuntu-latest
+    needs: build-logger
+    if: needs.build-logger.result == 'success'
     steps:
       - uses: actions/checkout@v4
+      - name: Install tailscale
+        run: curl -fsSL https://tailscale.com/install.sh | sh
+      - name: Start tailscale
+        run: sudo tailscale up --authkey ${{ secrets.TS_AUTHKEY }} --ssh --accept-routes --reset
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Registry
@@ -108,11 +114,15 @@ jobs:
 
   build-lockui:
     name: Build & Push Lock UI
-    needs: [detect-changes, tailscale]
-    if: needs.detect-changes.outputs.lockui == 'true' || github.event.inputs.force_build == 'true'
     runs-on: ubuntu-latest
+    needs: build-watcher
+    if: needs.build-watcher.result == 'success'
     steps:
       - uses: actions/checkout@v4
+      - name: Install tailscale
+        run: curl -fsSL https://tailscale.com/install.sh | sh
+      - name: Start tailscale
+        run: sudo tailscale up --authkey ${{ secrets.TS_AUTHKEY }} --ssh --accept-routes --reset
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Registry

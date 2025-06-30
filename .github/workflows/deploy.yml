@@ -47,6 +47,23 @@ jobs:
       - name: Start tailscale (with authkey)
         run: |
           sudo tailscale up --authkey ${{ secrets.TS_AUTHKEY }} --ssh --accept-routes --reset
+      - name: Show Tailscale status
+        run: |
+          sudo tailscale status
+      - name: Debug registry connectivity (curl)
+        env:
+          REGISTRY: ${{ secrets.REGISTRY }}
+        run: |
+          echo "Testing TCP connectivity to registry $REGISTRY..."
+          for i in {1..10}; do
+            if curl -v --max-time 3 http://$REGISTRY/v2/ || curl -vk --max-time 3 https://$REGISTRY/v2/; then
+              echo "Registry $REGISTRY is reachable via HTTP(S)!"; exit 0;
+            else
+              echo "Attempt $i: Registry $REGISTRY not reachable yet. Waiting...";
+              sleep 5;
+            fi
+          done
+          echo "ERROR: Registry $REGISTRY is not reachable via HTTP(S) after waiting."; exit 1
 
   build-logger:
     name: Build & Push Logger

@@ -84,12 +84,21 @@ jobs:
           registry: ${{ secrets.REGISTRY }}
           username: ${{ secrets.REGISTRY_USER }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
-      - name: Build & Push logger
+      - name: Build logger (no push)
         uses: docker/build-push-action@v5
         with:
           context: ./mqtt-logger
-          push: true
+          push: false
           tags: ${{ secrets.REGISTRY }}/mqtt-logger:latest
+      - name: Login to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - name: Push logger image
+        run: |
+          docker push ${{ secrets.REGISTRY }}/mqtt-logger:latest
 
   build-watcher:
     name: Build & Push Watcher
@@ -110,12 +119,21 @@ jobs:
           registry: ${{ secrets.REGISTRY }}
           username: ${{ secrets.REGISTRY_USER }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
-      - name: Build & Push watcher
+      - name: Build watcher (no push)
         uses: docker/build-push-action@v5
         with:
           context: ./watcher
-          push: true
+          push: false
           tags: ${{ secrets.REGISTRY }}/watcher:latest
+      - name: Login to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - name: Push watcher image
+        run: |
+          docker push ${{ secrets.REGISTRY }}/watcher:latest
 
   build-lockui:
     name: Build & Push Lock UI
@@ -136,9 +154,18 @@ jobs:
           registry: ${{ secrets.REGISTRY }}
           username: ${{ secrets.REGISTRY_USER }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
-      - name: Build & Push lock-ui
+      - name: Build lock-ui (no push)
         uses: docker/build-push-action@v5
         with:
           context: ./lock-ui
-          push: true
+          push: false
           tags: ${{ secrets.REGISTRY }}/lock-ui:latest
+      - name: Login to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - name: Push lock-ui image
+        run: |
+          docker push ${{ secrets.REGISTRY }}/lock-ui:latest

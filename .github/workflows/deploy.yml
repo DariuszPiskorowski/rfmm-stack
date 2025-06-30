@@ -42,23 +42,7 @@ jobs:
             fi
           done
 
-      - name: Wait for registry
-        id: wait
-        env:
-          REGISTRY: ${{ secrets.REGISTRY }}
-        run: |
-          echo "Testuje dostępność registry $REGISTRY przez 2 minuty..."
-          for i in {1..24}; do
-            if curl -s http://$REGISTRY/v2/; then
-              echo "::set-output name=registry_reachable::true"
-              exit 0
-            else
-              echo "[$i/24] Registry $REGISTRY nieosiągalne. Czekam..."
-              sleep 5
-            fi
-          done
-          echo "::set-output name=registry_reachable::false"
-          exit 1
+      # Usunięto sprawdzanie dostępności registry
 
   build-logger:
     name: Build & Push Logger

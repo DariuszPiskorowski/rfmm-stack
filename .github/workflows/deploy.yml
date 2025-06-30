@@ -74,13 +74,13 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to HTTP registry
-        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ${{ secrets.REGISTRY }} --username ${{ secrets.REGISTRY_USER }} --password-stdin
+        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login register.strainex.cc:5000 --username ${{ secrets.REGISTRY_USER }} --password-stdin
       - name: Build and push logger
         uses: docker/build-push-action@v5
         with:
           context: ./mqtt-logger
           push: true
-          tags: ${{ secrets.REGISTRY }}/mqtt-logger:latest
+          tags: register.strainex.cc:5000/mqtt-logger:latest
 
   build-watcher:
     name: Build & Push Watcher
@@ -96,13 +96,13 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to HTTP registry
-        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ${{ secrets.REGISTRY }} --username ${{ secrets.REGISTRY_USER }} --password-stdin
+        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login register.strainex.cc:5000 --username ${{ secrets.REGISTRY_USER }} --password-stdin
       - name: Build and push watcher
         uses: docker/build-push-action@v5
         with:
           context: ./watcher
           push: true
-          tags: ${{ secrets.REGISTRY }}/watcher:latest
+          tags: register.strainex.cc:5000/watcher:latest
 
   build-lockui:
     name: Build & Push Lock UI
@@ -118,10 +118,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to HTTP registry
-        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ${{ secrets.REGISTRY }} --username ${{ secrets.REGISTRY_USER }} --password-stdin
+        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login register.strainex.cc:5000 --username ${{ secrets.REGISTRY_USER }} --password-stdin
       - name: Build and push lock-ui
         uses: docker/build-push-action@v5
         with:
           context: ./lock-ui
           push: true
-          tags: ${{ secrets.REGISTRY }}/lock-ui:latest
+          tags: register.strainex.cc:5000/lock-ui:latest

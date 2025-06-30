@@ -9,6 +9,12 @@ on:
       - 'watcher/**'
       - 'lock-ui/**'
       - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Wymuś budowanie wszystkich obrazów'
+        required: false
+        default: 'false'
 
 jobs:
   detect-changes:
@@ -45,7 +51,7 @@ jobs:
   build-logger:
     name: Build & Push Logger
     needs: [detect-changes, tailscale]
-    if: needs.detect-changes.outputs.logger == 'true'
+    if: needs.detect-changes.outputs.logger == 'true' || github.event.inputs.force_build == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -67,7 +73,7 @@ jobs:
   build-watcher:
     name: Build & Push Watcher
     needs: [detect-changes, tailscale]
-    if: needs.detect-changes.outputs.watcher == 'true'
+    if: needs.detect-changes.outputs.watcher == 'true' || github.event.inputs.force_build == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -89,7 +95,7 @@ jobs:
   build-lockui:
     name: Build & Push Lock UI
     needs: [detect-changes, tailscale]
-    if: needs.detect-changes.outputs.lockui == 'true'
+    if: needs.detect-changes.outputs.lockui == 'true' || github.event.inputs.force_build == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

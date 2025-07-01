@@ -15,8 +15,8 @@ env:
   REGISTRY: register.strainex.cc
 
 jobs:
-  build:
-    name: Build Docker Images
+  mqtt-logger:
+    name: Build & Push mqtt-logger
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -49,31 +49,23 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build mqtt-logger image
+      - name: Login to Docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build & Push mqtt-logger image
         uses: docker/build-push-action@v5
         with:
           context: ./mqtt-logger
-          push: false
+          push: true
           tags: ${{ env.REGISTRY }}/mqtt-logger:latest
 
-      - name: Build watcher image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./watcher
-          push: false
-          tags: ${{ env.REGISTRY }}/watcher:latest
-
-      - name: Build lock-ui image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./lock-ui
-          push: false
-          tags: ${{ env.REGISTRY }}/lock-ui:latest
-
-  login-and-push:
-    name: Login & Push Images
+  watcher:
+    name: Build & Push watcher
     runs-on: ubuntu-latest
-    needs: build
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -83,6 +75,24 @@ jobs:
 
       - name: Start tailscale
         run: sudo tailscale up --authkey ${{ secrets.TS_AUTHKEY }} --ssh --accept-routes --reset
+
+      - name: Wait for registry (max 15s)
+        run: |
+          echo "Testuję dostępność registry ${{ env.REGISTRY }} (max 15 sekund)..."
+          i=1
+          while [ $i -le 3 ]; do
+            if curl --max-time 3 -s http://${{ env.REGISTRY }}/v2/ > /dev/null; then
+              echo "Registry ${{ env.REGISTRY }} dostępne."
+              break
+            fi
+            echo "[$i/3] Czekam 5s..."
+            sleep 5
+            i=$((i+1))
+          done
+          if [ $i -gt 3 ]; then
+            echo "Registry ${{ env.REGISTRY }} NIEOSIĄGALNE. Przerywam workflow!"
+            exit 1
+          fi
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -94,11 +104,57 @@ jobs:
           username: ${{ secrets.REGISTRY_USER }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: Push mqtt-logger image
-        run: docker push ${{ env.REGISTRY }}/mqtt-logger:latest
+      - name: Build & Push watcher image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./watcher
+          push: true
+          tags: ${{ env.REGISTRY }}/watcher:latest
 
-      - name: Push watcher image
-        run: docker push ${{ env.REGISTRY }}/watcher:latest
+  lock-ui:
+    name: Build & Push lock-ui
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-      - name: Push lock-ui image
-        run: docker push ${{ env.REGISTRY }}/lock-ui:latest
+      - name: Install tailscale
+        run: curl -fsSL https://tailscale.com/install.sh | sh
+
+      - name: Start tailscale
+        run: sudo tailscale up --authkey ${{ secrets.TS_AUTHKEY }} --ssh --accept-routes --reset
+
+      - name: Wait for registry (max 15s)
+        run: |
+          echo "Testuję dostępność registry ${{ env.REGISTRY }} (max 15 sekund)..."
+          i=1
+          while [ $i -le 3 ]; do
+            if curl --max-time 3 -s http://${{ env.REGISTRY }}/v2/ > /dev/null; then
+              echo "Registry ${{ env.REGISTRY }} dostępne."
+              break
+            fi
+            echo "[$i/3] Czekam 5s..."
+            sleep 5
+            i=$((i+1))
+          done
+          if [ $i -gt 3 ]; then
+            echo "Registry ${{ env.REGISTRY }} NIEOSIĄGALNE. Przerywam workflow!"
+            exit 1
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build & Push lock-ui image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./lock-ui
+          push: true
+          tags: ${{ env.REGISTRY }}/lock-ui:latest

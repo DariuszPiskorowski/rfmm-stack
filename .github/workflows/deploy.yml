@@ -24,6 +24,18 @@ jobs:
       - name: Start tailscale
         run: sudo tailscale up --authkey ${{ secrets.TS_AUTHKEY }} --ssh --accept-routes --reset
 
+      - name: Pokaż adres IP z DNS
+        run: nslookup register.strainex.cc || dig register.strainex.cc
+
+      - name: Tailscale IP info
+        run: tailscale ip -4 || ifconfig
+
+      - name: Curl HTTPS
+        run: curl -vk https://register.strainex.cc:5000/v2/ || true
+
+      - name: Curl po IP
+        run: curl -vk http://100.119.56.20:5000/v2/ || true
+
       - name: Wait for registry (max 15s)
         env:
           REGISTRY: register.strainex.cc:5000

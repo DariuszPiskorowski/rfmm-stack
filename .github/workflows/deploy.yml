@@ -31,7 +31,7 @@ jobs:
           echo "Testuję dostępność registry $REGISTRY (max 15 sekund)..."
           i=1
           while [ $i -le 3 ]; do
-            if curl -s http://$REGISTRY/v2/ > /dev/null; then
+            if curl --max-time 3 -s http://$REGISTRY/v2/ > /dev/null; then
               echo "Registry $REGISTRY dostępne."
               break
             fi

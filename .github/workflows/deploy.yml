@@ -11,12 +11,12 @@ on:
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
+env:
+  REGISTRY: 100.119.56.20:5000
+
 jobs:
-  build-and-push:
-      - name: Wymuś HTTP dla registry (ignoruj błąd)
-        run: |
-          echo '{ "insecure-registries": ["100.119.56.20:5000"] }' | sudo tee /etc/docker/daemon.json
-          sudo systemctl restart docker || true
+  build:
+    name: Build Docker Images
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -28,21 +28,13 @@ jobs:
       - name: Start tailscale
         run: sudo tailscale up --authkey ${{ secrets.TS_AUTHKEY }} --ssh --accept-routes --reset
 
-      - name: Tailscale IP info
-        run: tailscale ip -4 || ifconfig
-
-      - name: Curl po IP
-        run: curl -vk http://100.119.56.20:5000/v2/ || true
-
       - name: Wait for registry (max 15s)
-        env:
-          REGISTRY: 100.119.56.20:5000
         run: |
-          echo "Testuję dostępność registry $REGISTRY (max 15 sekund)..."
+          echo "Testuję dostępność registry ${{ env.REGISTRY }} (max 15 sekund)..."
           i=1
           while [ $i -le 3 ]; do
-            if curl --max-time 3 -s http://$REGISTRY/v2/ > /dev/null; then
-              echo "Registry $REGISTRY dostępne."
+            if curl --max-time 3 -s http://${{ env.REGISTRY }}/v2/ > /dev/null; then
+              echo "Registry ${{ env.REGISTRY }} dostępne."
               break
             fi
             echo "[$i/3] Czekam 5s..."
@@ -50,40 +42,63 @@ jobs:
             i=$((i+1))
           done
           if [ $i -gt 3 ]; then
-            echo "Registry $REGISTRY NIEOSIĄGALNE. Przerywam workflow!"
+            echo "Registry ${{ env.REGISTRY }} NIEOSIĄGALNE. Przerywam workflow!"
             exit 1
           fi
-
-
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Wymuś HTTP dla registry (ignoruj błąd)
-        run: |
-          echo '{ "insecure-registries": ["100.119.56.20:5000"] }' | sudo tee /etc/docker/daemon.json
-          sudo systemctl restart docker || true
-
-      - name: Login to HTTP registry
-        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login 100.119.56.20:5000 --username ${{ secrets.REGISTRY_USER }} --password-stdin
-
-      - name: Build and push logger
+      - name: Build mqtt-logger image
         uses: docker/build-push-action@v5
         with:
           context: ./mqtt-logger
-          push: true
-          tags: 100.119.56.20:5000/mqtt-logger:latest
+          push: false
+          tags: ${{ env.REGISTRY }}/mqtt-logger:latest
 
-      - name: Build and push watcher
+      - name: Build watcher image
         uses: docker/build-push-action@v5
         with:
           context: ./watcher
-          push: true
-          tags: 100.119.56.20:5000/watcher:latest
+          push: false
+          tags: ${{ env.REGISTRY }}/watcher:latest
 
-      - name: Build and push lock-ui
+      - name: Build lock-ui image
         uses: docker/build-push-action@v5
         with:
           context: ./lock-ui
-          push: true
-          tags: 100.119.56.20:5000/lock-ui:latest
+          push: false
+          tags: ${{ env.REGISTRY }}/lock-ui:latest
+
+  login-and-push:
+    name: Login & Push Images
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install tailscale
+        run: curl -fsSL https://tailscale.com/install.sh | sh
+
+      - name: Start tailscale
+        run: sudo tailscale up --authkey ${{ secrets.TS_AUTHKEY }} --ssh --accept-routes --reset
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Push mqtt-logger image
+        run: docker push ${{ env.REGISTRY }}/mqtt-logger:latest
+
+      - name: Push watcher image
+        run: docker push ${{ env.REGISTRY }}/watcher:latest
+
+      - name: Push lock-ui image
+        run: docker push ${{ env.REGISTRY }}/lock-ui:latest

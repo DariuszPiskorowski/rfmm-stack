@@ -24,21 +24,15 @@ jobs:
       - name: Start tailscale
         run: sudo tailscale up --authkey ${{ secrets.TS_AUTHKEY }} --ssh --accept-routes --reset
 
-      - name: Pokaż adres IP z DNS
-        run: nslookup register.strainex.cc || dig register.strainex.cc
-
       - name: Tailscale IP info
         run: tailscale ip -4 || ifconfig
-
-      - name: Curl HTTPS
-        run: curl -vk https://register.strainex.cc:5000/v2/ || true
 
       - name: Curl po IP
         run: curl -vk http://100.119.56.20:5000/v2/ || true
 
       - name: Wait for registry (max 15s)
         env:
-          REGISTRY: register.strainex.cc:5000
+          REGISTRY: 100.119.56.20:5000
         run: |
           echo "Testuję dostępność registry $REGISTRY (max 15 sekund)..."
           i=1
@@ -60,25 +54,25 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Login to HTTP registry
-        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login register.strainex.cc:5000 --username ${{ secrets.REGISTRY_USER }} --password-stdin
+        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login 100.119.56.20:5000 --username ${{ secrets.REGISTRY_USER }} --password-stdin
 
       - name: Build and push logger
         uses: docker/build-push-action@v5
         with:
           context: ./mqtt-logger
           push: true
-          tags: register.strainex.cc:5000/mqtt-logger:latest
+          tags: 100.119.56.20:5000/mqtt-logger:latest
 
       - name: Build and push watcher
         uses: docker/build-push-action@v5
         with:
           context: ./watcher
           push: true
-          tags: register.strainex.cc:5000/watcher:latest
+          tags: 100.119.56.20:5000/watcher:latest
 
       - name: Build and push lock-ui
         uses: docker/build-push-action@v5
         with:
           context: ./lock-ui
           push: true
-          tags: register.strainex.cc:5000/lock-ui:latest
+          tags: 100.119.56.20:5000/lock-ui:latest

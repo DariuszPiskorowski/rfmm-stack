@@ -50,8 +50,10 @@ jobs:
             exit 1
           fi
 
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
 
       - name: Login to HTTP registry
         run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login 100.119.56.20:5000 --username ${{ secrets.REGISTRY_USER }} --password-stdin

@@ -112,7 +112,7 @@ jobs:
           tags: ${{ env.REGISTRY }}/watcher:latest
 
   lock-ui:
-    name: Build & Push lock-ui
+    name: Build & Push lock-list
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -152,9 +152,9 @@ jobs:
           username: ${{ secrets.REGISTRY_USER }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: Build & Push lock-ui image
+      - name: Build & Push lock-list image
         uses: docker/build-push-action@v5
         with:
-          context: ./lock-ui
+          context: ./lock-list
           push: true
-          tags: ${{ env.REGISTRY }}/lock-ui:latest
+          tags: ${{ env.REGISTRY }}/lock-list:latest

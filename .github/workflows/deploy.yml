@@ -62,6 +62,7 @@ jobs:
           context: ./mqtt-logger
           push: true
           tags: ${{ env.REGISTRY }}/mqtt-logger:latest
+          platforms: linux/amd64,linux/arm64
 
   watcher:
     name: Build & Push watcher
@@ -110,6 +111,7 @@ jobs:
           context: ./watcher
           push: true
           tags: ${{ env.REGISTRY }}/watcher:latest
+          platforms: linux/amd64,linux/arm64
 
   lock-ui:
     name: Build & Push lock-list
@@ -158,3 +160,4 @@ jobs:
           context: ./lock-list
           push: true
           tags: ${{ env.REGISTRY }}/lock-list:latest
+          platforms: linux/amd64,linux/arm64
